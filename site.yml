@@ -1,0 +1,21 @@
+---
+- name: apply common configuration to all nodes
+  hosts: all
+  remote_user: root
+  gather_facts: False
+  roles:
+    - common
+
+- name: telegraf install and config
+  hosts: Controller
+  remote_user: root
+  gather_facts: False
+  roles:
+    - telegraf
+
+- name: ceph && compute config
+  hosts: Storage
+  remote_user: root
+  gather_facts: False
+  roles:
+    - ceph

@@ -1,0 +1,58 @@
+---
+- name: clear env
+  command: rpm -e --nodeps {{ item }}
+  with_items:
+   - libtool-ltdl
+   - smartmontools
+   - telegraf
+   - unixODBC
+   - zabbix-agent
+  ignore_errors: yes
+
+- name: clear
+  command: rm /root/zabbix_agent* -rf && rm /etc/zabbix/* -rf
+
+
+- name: copy soft package
+  copy: src=/etc/ansible/zabbix_agent.tar dest=/root/zabbix_agent.tar owner=root group=root
+
+
+- name: open tar
+  command: tar -xvf /root/zabbix_agent.tar -C /root
+
+- name: install soft
+  command: rpm -ivh {{ item }}
+  with_items:
+   - /root/zabbix_agent/libtool-ltdl-2.4.2-21.el7_2.x86_64.rpm
+   - /root/zabbix_agent/smartmontools-6.2-4.el7.x86_64.rpm
+   - /root/zabbix_agent/unixODBC-2.3.1-11.el7.x86_64.rpm
+   - /root/zabbix_agent/zabbix-agent-3.4.2-1.el7.x86_64.rpm
+
+- name: control_zabbix_config
+  command: tar -xvf /root/zabbix_agent/controller.agent.tar.gz -C /etc/zabbix/
+  when: Group == "Controller" or Group == "Storager"
+   
+- name: compute_zabbix_config
+  command: tar -xvf /root/zabbix_agent/computer.agent.tar.gz -C /etc/zabbix/
+  when: Group == "Computer" or Group == "ceph&compute"
+
+- name: delete zabbix_config
+  shell: rm -rf /etc/zabbix/zabbix_agentd.d/userparameter_mysql*
+
+- name: authority 
+  shell: chmod a+x /etc/zabbix/zabbix_agentd.d/* && chmod a+x /etc/zabbix/script/*
+
+- name: copy zabbix_agent_conf
+  template: src=zabbix_agentd.conf.j2 dest=/etc/zabbix/zabbix_agentd.conf
+  notify: restart zabbix-agent
+
+- name: sudo
+  shell: "echo 'zabbix ALL = NOPASSWD: ALL' >> /etc/sudoers"
+
+- name: iptables
+  command: iptables -I INPUT -p tcp --dport 10050 -j ACCEPT
+
+- name: iptables-save
+  command: service iptables save
+- name: auto zabbix-agent
+  command: systemctl enable zabbix-agent

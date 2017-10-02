@@ -1,0 +1,20 @@
+---
+- name: install telegraf
+  command: rpm -ivh {{ item }}
+  with_items:
+   - /root/zabbix_agent/telegraf-1.2.1.x86_64.rpm
+
+- name: config ceph scoket 
+  shell: chmod a+r /etc/ceph/ceph.client.admin.keyring && echo "chmod a+r /etc/ceph/ceph.client.admin.keyring" >> /etc/rc.d/rc.local&& sed -i 's/User=telegraf/User=root/g' /lib/systemd/system/telegraf.service
+
+- name: reload systemctl
+  command: systemctl daemon-reload
+
+- name: copy telegraf conf
+  template: src=telegraf.conf.j2 dest=/etc/telegraf/telegraf.conf
+  notify: restart telegraf
+
+- name: config telegraf chkconfig
+  command: systemctl enable telegraf
+
+
